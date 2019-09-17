@@ -1,0 +1,224 @@
+<?php
+
+$base_URL=$_SERVER['HTTP_HOST'];
+
+class Saltstack extends CI_Controller {
+	
+	public function index()
+	{
+                $this->load->view('menu');
+		$this->load->library('form_validation');
+                $this->total();
+	}
+        public function total()
+        {
+		$this->load->model('total_model','',TRUE);
+		$this->load->library('saltstacklib');
+	
+		//minion count data 
+		$count_list = $this->total_model->count_list();
+
+                $data['host_cnt'] = $count_list['host_cnt'];
+                $data['nores_cnt'] = $count_list['nores_cnt'];
+                $data['nominion_cnt'] = $count_list['nominion_cnt'];
+
+		//120 second returns data
+		$data['returns_data'] = $this->total_model->returns_data(120);
+
+		// count limit setting
+		$data['count_limit'] = array( 'total' => array('queue_count' => 50),
+					'smtp' => array('queue_count' => 800),
+					'mail' => array('queue_count' => 100),
+					'session_count' => 9000000,
+					'block_count' => 1,
+					'pop_count' => 400,
+					'web_count' => 800,
+					'mysql_count' => 2000,
+					'row_totaldb_count' => 10,
+					'tra' => 1001,
+					'else' => 10000000);
+
+                $this->load->view('total',$data);
+	}
+        public function critical()
+        {
+	}
+        public function splist()
+        {
+	}
+        public function disk()
+        {
+	}
+        public function traffic()
+        {
+	}
+        public function nores()
+        {
+	}
+        public function mlog()
+        {
+	}
+        public function rlog()
+        {
+	}
+        public function events()
+        {
+	}
+        public function uptime()
+        {
+	}
+        public function grains()
+        {
+	}
+        public function degree()
+        {
+	}
+        public function hardware($excel=0)
+        {
+		
+		$this->load->model('hardware_model','',TRUE);
+		$data['data']=$this->hardware_model->get_data();
+		if ($excel == 0 ) {
+			$this->load->view('hardware',$data);
+		} else {
+			$this->load->view('hardware_excel',$data);
+		}
+	}
+        public function info($excel=0)
+        {
+		
+		$this->load->model('info_model','',TRUE);
+		$data['data']=$this->info_model->get_data();
+		if ($excel == 0 ) {
+			$this->load->view('info',$data);
+		} else { 
+			$this->load->view('info_excel',$data);
+
+		} 
+	}
+        public function cmevents($cur_page=0)
+        {
+		$this->load->model('cmevents_model','',TRUE);
+
+		#Pagination config
+		$this->load->library('pagination');
+		$config['base_url'] = 'http://$base_URL/ci/index.php/saltstack/cmevents/';
+		$total_list = $this->cmevents_model->list_count();
+		$data['list_count'] = $total_list;
+		$config['total_rows'] = $total_list;
+                $config['per_page'] = 30;
+		$data['config'] = $config;
+		$data['cur_page'] = $cur_page;
+		
+	        $data['table_header']=array('HOST','DATE','KEY','DATA');	
+		$data['alert_data']=$this->cmevents_model->get_alert_data();
+	
+		$this->load->view('table',$data);
+        }
+        public function ipmievents($minion="NONE")
+	{	
+		$this->load->model('ipmievents_model','',TRUE);
+		$interval = 7; # day
+		$data['alert_data']=$this->ipmievents_model->get_alert_data($interval,$minion);
+		$data['minion_list_file']="/home/idcmon/html/saltkey-list";
+		$data['minion_name'] = $minion;
+		if ($minion == "NONE" ) {
+		$this->load->view('ipmievents',$data);
+		} else {
+		$this->load->view('ipmievent_minion',$data);
+		}
+	}
+	public function processcheck()
+	{
+		$today=DATE("Y-m-d",time());
+		$this->load->model('processcheck_model','',TRUE);
+		$data['prcess_data']=$this->processcheck_model->get_process_data($today);
+		$this->load->view('process_check',$data);
+	}
+	public function graphmaker($host,$date,$graph_hour)
+	{
+		$today=date("Ymd", mktime(date("m"), date("d"), date("Y")));
+		if($date == $today)
+		{
+		     $table="returns";
+		}else{
+		     $table="returns_daily_$date";
+		}
+		if($graph_hour == 24){
+			if($date == $today) {
+	                        $table="returns_daily";
+	       		}else{
+                	        $table="returns_daily_$date";
+	        	}	
+		}
+		$this->load->model('graphmaker_model','',TRUE);
+		$data['graphhost']=$host;
+		$data['graphdate']=$date;
+		$data['graphhour']=$graph_hour;
+		$data['graphdata']=$this->graphmaker_model->get_graph_data($table,$graph_hour,$host);
+		$data['grapholddate']=$this->graphmaker_model->get_graph_olddate();
+		$this->load->view('graphmaker',$data);	
+	}
+
+        public function graphmaker_json($host,$part,$date,$graph_hour,$s_eth, $is_view=true)
+        {
+                $today=date("Ymd", mktime(date("m"), date("d"), date("Y")));
+                if($date == $today)
+                {
+                     $table="returns";
+                }else{
+                     $table="returns_daily_$date";
+                }
+
+		switch($graph_hour){
+		 	case 24 :  $table="returns_daily";
+				  break;
+			case 168 : $table="returns_weekly";
+				  break;
+			case 720 : $table="returns_monthly";
+				  break;
+			case 8760 : $table="returns_yearly";
+	
+		}
+
+                $this->load->model('graphmaker_disk_model','',TRUE);
+                $data['graphhost']=$host;
+                $data['graphdate']=$date;
+                $data['graphhour']=$graph_hour;
+		$data['graphpart']=$part;
+		$data['grapheth']=$s_eth;
+		if ($part == "traffic"){
+                	$data['graphfull']=$this->graphmaker_disk_model->get_graph_disk($table,$part,$graph_hour,$host,$s_eth,$date);
+			$data['graphdata']=$data['graphfull'][0];
+			$data['grapheth']=$data['graphfull'][1];
+		}else{
+
+			$data['graphdata']=$this->graphmaker_disk_model->get_graph_disk($table,$part,$graph_hour,$host,$s_eth,$date);
+		}
+                $data['grapholddate']=$this->graphmaker_disk_model->get_graph_olddate();
+
+		if($is_view) {
+                	$this->load->view('graphmaker_json',$data);
+		}
+        }
+        public function graphmaker_disk1($host,$part,$date,$graph_hour)
+        {
+		$this->load->model('graphmaker_disk_model','',TRUE);
+		$s_eth="eth0";
+		$data['graphhost']=$host;
+		$data['graphpart']=$part;
+		$data['graphdate']=$date;
+		
+		//$aaaaaaaaaaaa=$this->graphmaker_json($host,$part,$date,$graph_hour,$s_eth,);
+		//print_r($json_data['grapheth']);
+		$data['tablelist']=$this->graphmaker_disk_model->get_table_list($part,$graph_hour,$host);
+		if ($part == "traffic"){
+			$graph_json=$this->graphmaker_json($host,$part,$date,$graph_hour,$s_eth,true);
+			//print_r($graph_json);
+		}
+		$this->load->view('graphmaker_disk1',$data);
+	}
+
+
+}
+?>

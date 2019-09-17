@@ -1,0 +1,221 @@
+<?
+class Graphmaker_disk_model extends CI_Model {
+
+        public function __construct()
+        {
+                // Call the CI_Model constructor
+                parent::__construct();
+        }
+
+
+	public function get_table_list($part,$graph_hour,$host)
+	{
+		
+		$sql1="SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'all_new_salt' AND table_name LIKE 'returns_daily_%' order by TABLE_NAME desc;";
+		$query1=$this->db->query($sql1);
+	
+
+		$l=0;
+                foreach ($query1 -> result() as $row){
+                    $table_date=$row->TABLE_NAME;
+                    $table_st=explode("_", $table_date);
+                    $table_list[]=$table_st[2];
+
+                    $l++;
+                }
+
+                return $table_list;
+
+
+	}
+        public function get_graph_disk($table,$part,$graph_hour,$host)
+        {
+		
+
+                $today = date("Ymd", mktime(date("m"), date("d"), date("Y")));
+                switch($graph_hour) {
+                        case 24 : $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                  break;
+                        case 168 : $table="returns_weekly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                   break;
+                        case 720 : $table="returns_monthly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                   break;
+                        case 8760 : $table="returns_yearly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                    break;
+                        default : $sql="select id, rec_date, srv_id, returns from $table where rec_date >= DATE_ADD(now(),interval -$graph_hour hour) and rec_date < now() and srv_id='$host'";
+                                  break;
+                }
+
+		//print "$graph_hour"."$table"."$host";
+
+                $query=$this->db->query($sql);
+
+		function rec_date($query, $graph_hour){
+
+			$l=0;
+                        foreach ($query -> result() as $row){
+
+				$rec_date[]=$row->rec_date;
+
+				$l++;
+			}
+				
+			return $rec_date;	
+
+		}
+
+
+		function main_part($query, $graph_hour){
+
+			$l=0;
+			foreach ($query -> result() as $row){
+
+                       
+				$rec_date=rec_date($query, $graph_hour);
+				/*--
+				if ($graph_hour = 1){
+					$rec_date_explode=explode(" ", $row->rec_date);
+					$rec_date_explode1=explode(":", $rec_date_explode[1]);
+					$rec_date=$rec_date_explode1[0].":".$rec_date_explode1[1];
+
+				}
+				--*/
+				
+			        $arr_recdate[$l]=$rec_date[$l];
+
+                                $arr_row=$row->returns;
+
+						
+				//print_r($arr_row);
+			
+				$arr_ex=explode("},",$arr_row);
+				$arr_cpu=explode("{",$arr_ex[0]);
+
+
+				$arr_str=str_replace('"', '', $arr_cpu[2]);
+				$cpu_line_arr[]=$arr_str;
+                                $l++;
+                        }
+
+
+			
+			for($i=0; $i<count($cpu_line_arr); $i++){
+
+				//echo rec_date($query, $graph_hour)[$i];
+				//echo " ";
+				//echo "$cpu_line_arr[$i]"."<br />\n";
+
+				$arr_cpu_ex=explode(",",$cpu_line_arr[$i]);
+
+				//echo $cpu_line_arr[$i];
+	
+				for($j=0; $j<count($arr_cpu_ex);$j++){
+				
+					$arr_cpu_ex1=explode(":",trim($arr_cpu_ex[$j]));
+									
+					$cpu_arr_key=$arr_cpu_ex1[0];
+					$cpu_arr_value=$arr_cpu_ex1[1];
+					
+					//echo $cpu_arr_key."==>".$cpu_arr_value."<br />\n";
+					if ($cpu_arr_key == "loadavg"){
+						
+						$cpu_arr_key = "cpu_load";
+					}
+						//echo $cpu_arr_key;				
+
+
+					$cpu_arr[$cpu_arr_key]="$cpu_arr_value";
+
+				}
+
+					$cpu_part_total[$i]=$cpu_arr;
+			}
+
+
+			function key_main_array($cpu_part_total){
+
+				$key_val=$cpu_part_total;
+				
+                                for ($i=0;$i<count($cpu_part_total);$i++){
+                                        $key_array_value=array_merge($cpu_part_total[0], $cpu_part_total[$i]);
+                                }
+				
+                                foreach($key_array_value as $key => $value){
+
+					if (trim($key) !== "sockstat"){
+						$arr_key[]= $key;
+					}
+					
+                                }
+                                        return array($arr_key,$cpu_part_total);
+			}
+		
+
+			function main_key_arr($cpu_part_total, $arr_recdate) {
+
+
+                                $key_result=key_main_array($cpu_part_total);
+
+                                $key_list=$key_result[0];
+                                $key_value_array=$key_result[1];
+
+                                for ($i=0; $i<count($key_list);$i++){
+
+                                        $key_name=$key_list[$i];
+
+                                        for($j=0; $j<count($key_value_array);$j++){
+
+                                                $part_array['rec_date']=$arr_recdate[$j];
+                                                $part_array['value']=$key_value_array[$j][$key_name];
+
+                                                $part_array_total[$key_name][]=$part_array;
+
+                                        }
+
+                                                $part_arr['part']=$part_array_total;
+
+                                }
+
+                                                return $part_arr;
+
+			}
+
+
+			return main_key_arr($cpu_part_total, $arr_recdate);
+
+		}
+
+		//print $table;
+		//$ret=disk_key_arr($part_arr_total, $arr_recdate);
+		//print_r(key_array($part_arr_total));
+
+			$main_ret=main_part($query, $graph_hour);
+			//$disk_ret=disk_part($query, $graph_hour);
+
+                switch($part) {
+                        case "disk" : return $disk_ret;
+                                  break;
+                        case "mem" : disk_part($query);
+                                   break;
+                        case "main" : return $main_ret;
+                                   break;
+                        case "traffic" : disk_part($query);
+                                    break;
+                        default : return $main_ret;
+                                  break;
+                }
+
+	}
+
+
+	public function get_graph_olddate()
+	{
+		$sql="SELECT table_name FROM information_schema.tables  WHERE  table_name LIKE 'returns_daily_%' ORDER BY 1 DESC";
+		$query=$this->db->query($sql);
+		$ret=$query->result_array();
+                return $ret;
+	}
+
+}
+
+?>

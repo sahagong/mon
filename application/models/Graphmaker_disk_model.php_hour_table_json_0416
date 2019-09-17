@@ -1,0 +1,150 @@
+<?
+class Graphmaker_disk_model extends CI_Model {
+
+        public function __construct()
+        {
+                // Call the CI_Model constructor
+                parent::__construct();
+        }
+	
+	public function get_graph_data($table,$graph_hour,$host)
+	{
+		$today = date("Ymd", mktime(date("m"), date("d"), date("Y")));
+		switch($graph_hour) {
+			case 24 : $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+				  break;
+			case 168 : $table="returns_weekly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+				   break;
+			case 720 : $table="returns_monthly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+				   break;
+			case 8760 : $table="returns_yearly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+				    break;
+			default : $sql="select id, rec_date, srv_id, returns from $table where rec_date >= DATE_ADD(now(),interval -$graph_hour hour) and rec_date < now() and srv_id='$host'";
+				  break;
+		}
+		$query=$this->db->query($sql);
+		$ret=$query->result_array();
+		return $ret;
+	}
+
+
+        public function get_graph_disk($table,$graph_hour,$host)
+        {
+                $today = date("Ymd", mktime(date("m"), date("d"), date("Y")));
+                switch($graph_hour) {
+                        case 24 : $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                  break;
+                        case 168 : $table="returns_weekly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                   break;
+                        case 720 : $table="returns_monthly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                   break;
+                        case 8760 : $table="returns_yearly"; $sql="select id, rec_date, srv_id, returns from $table where srv_id='$host'";
+                                    break;
+                        default : $sql="select id, rec_date, srv_id, returns from $table where rec_date >= DATE_ADD(now(),interval -$graph_hour hour) and rec_date < now() and srv_id='$host'";
+                                  break;
+                }
+                $query=$this->db->query($sql);
+                $ret=$query->result_array();
+
+		$l=0;
+		foreach ($query -> result() as $row){
+
+			$arr_recdate[$l]=$row->rec_date;
+
+			$arr_row=$row->returns;
+			$arr_ex=explode("},",$arr_row);
+			
+			$arr_sp=explode("{",$arr_ex[2]);
+			
+			//echo $arr_ex[2];
+			$arr_tr=str_replace('"', '', $arr_sp[1]);
+			$disk_line_arr[]=$arr_tr;
+	
+			$l++;
+		}
+
+			for($i=0; $i<count($disk_line_arr);$i++)
+			{
+
+				if($disk_line_arr[$i]){
+					
+					$disk_part_ex=explode(",",$disk_line_arr[$i]);
+
+					for ($j=0; $j<count($disk_part_ex);$j++){
+						$disk_part_k=explode(":", $disk_part_ex[$j]);
+					
+						$part_key=$disk_part_k[0];
+						$part_val=$disk_part_k[1];
+
+
+						$part_arr[$part_key]="$part_val";
+
+					}
+
+						$part_arr_total[$i]=$part_arr;
+				}
+
+			}
+		
+		function key_array($part_arr_total) {			
+
+			//print_r($part_arr_total);
+			for ($i=0;$i<count($part_arr_total);$i++){
+				$key_array_value=array_merge($part_arr_total[0], $part_arr_total[$i]);
+			}
+
+			foreach($key_array_value as $key => $value){
+		
+				$arr_key[]=$key;
+			}
+				return array($arr_key,$part_arr_total);
+
+		}
+
+		function disk_key_arr($part_arr_total, $arr_recdate, $table, $graph_hour) {
+
+
+			$key_result=key_array($part_arr_total);
+			
+			$key_list=$key_result[0];
+			$key_value_array=$key_result[1];
+
+			for ($i=0; $i<count($key_list);$i++){
+
+				$key_name=$key_list[$i];
+
+				for($j=0; $j<count($key_value_array);$j++){
+
+				        $part_array['rec_date']=$arr_recdate[$j];	
+					$part_array['value']=$key_value_array[$j][$key_name];
+				
+					$part_array_total[$key_name][]=$part_array;
+
+				}
+
+					$part_arr['part']['data']=$part_array_total;
+
+			}
+
+		                	$part_arr['part']['table']=$table;
+                			$part_arr['part']['hour']=$graph_hour;			
+
+					return $part_arr;
+					//print_r($disk_part_arr);
+		}
+
+		$ret=disk_key_arr($part_arr_total, $arr_recdate, $table, $graph_hour);
+		return $ret;
+		//print_r(key_array($part_arr_total));
+
+	}
+
+	public function get_graph_olddate()
+	{
+		$sql="SELECT table_name FROM information_schema.tables  WHERE  table_name LIKE 'returns_daily_%' ORDER BY 1 DESC";
+		$query=$this->db->query($sql);
+		$ret=$query->result_array();
+                return $ret;
+	}
+}
+?>
