@@ -1,0 +1,79 @@
+/* SALT WEB CSS kimdw@gabia.com */
+a:active { font-size: 9pt; text-decoration: none ; color: #555555}
+a:link { font-size: 9pt; text-decoration: none; color: #555555}
+a:visited { font-size: 9pt; text-decoration: none ; color: #555555}
+a:hover { font-size: 9pt; text-decoration: none; color: #555555}
+
+table#Total {
+        width: 100%;
+        color:  #212424;
+        margin: 0 0 1em 0;
+        font: 80%/150% "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Lucida, Helvetica, sans-serif;
+}
+table#Total ,tr#Total ,th#Total ,td#Total {
+        margin: 0;
+        padding: 0;
+        border-spacing: 0;
+        border-collapse: collapse;
+}
+
+thead#Total {
+        background:  #5D5D5D;
+}
+thead#Total th {
+        padding: 1em 0;
+        text-align: center;
+        color:  #FFFFFF;
+        border-bottom: 3px solid  #BDBDBD;
+}
+
+thead#Total td {
+ border-right: 1px solid  #fff;
+ color: #fff;
+ text-align:center;
+ padding:2px;
+ text-transform:uppercase;
+ height:25px;
+ background-color:  #2724F5;
+ font-weight: normal;
+}
+
+table#Total a {
+        color:  #854400;
+        text-decoration: none;
+}
+table#Total a:visited {
+        text-decoration: line-through;
+}
+table#Total a:hover {
+        text-decoration: underline;
+}
+
+table#hw {
+                border-collapse:collapse;
+                background: #EFF4FB url(http://www.roscripts.com/images/teaser.gif) repeat-x;
+                border-left:1px solid  #686868;
+                border-right:1px solid  #686868;
+                font:0.8em/145% 'Trebuchet MS',helvetica,arial,verdana;
+                color:  #333;
+}
+
+td#hw, th#hw {
+                padding:5px;
+}
+
+table#hw a {
+                color: #950000;
+                text-decoration:none;
+}
+
+table#hw a:visited {
+                font-weight:normal;
+                color: #666;
+                text-decoration: line-through;
+}
+
+table#hw a:hover {
+                border-bottom: 1px dashed  #bbb;
+}
+
